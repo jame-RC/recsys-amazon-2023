@@ -1,0 +1,167 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script, but they contain local paths
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nosenv/
+.gcov
+.jacocoverage
+.pickle
+*.db
+*.log
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in git.
+#   However, in case of collaboration, if well-established development flow is not used,
+#   it may affect the integrate.
+#Pipfile.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in git.
+#   poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in git.
+#pdm.lock
+
+# virtualenv
+.venv
+venv/
+ENV/
+env/
+ENV/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# 🌌 推荐系统课程大作业特定过滤 (Project Specific)
+# ==========================================
+
+# 1. 忽略庞大的原始和切分数据集
+data/
+**/data/
+
+# 2. 忽略所有模型权重参数（防止上百 MB 文件被拒）
+*.pt
+results/*.pt
+**/results/*.pt
+
+# 3. 忽略评估测试结果 JSON/JS 文件及临时缓存
+results/*.json
+results/*.js
+*_metrics.json
+test_metrics.json
+
+# 4. 忽略运行时日志与测试脚本
+*.log
+bpr_debug.log
+test_sasrec_server.py
+
+# 5. 忽略本地可视化大屏及其数据载体 (测试文件)
+dashboard.html
+results/dashboard_data.js
+
+# 6. 忽略中英文实验报告及说明 (实验报告不需要上传)
+实验报告.md
+实验报告.docx
+实验报告_已更新.docx
+~$实验报告.docx
+大作业说明.docx
+大作业说明.pdf
+
+# 7. 忽略临时本地开发与 IDE 配置文件
+.deepseek/
+.reasonix/
+.idea/
+.vscode/
+*.pem

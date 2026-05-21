@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.dataset import AmazonDataset
 from src.evaluation.evaluator import Evaluator
 from src.models.bpr import BPRRecommender
+from src.models.bpr_advanced import BPRAdvancedRecommender
 from src.models.item_cf import ItemCFRecommender
 from src.models.pop import PopRecommender
 from src.models.sasrec import SASRecRecommender
@@ -28,6 +29,8 @@ def get_model(name: str, num_items: int):
         return ItemCFRecommender(num_items)
     elif name == "bpr":
         return BPRRecommender(num_items)
+    elif name == "bpr_advanced":
+        return BPRAdvancedRecommender(num_items)
     elif name == "sasrec":
         return SASRecRecommender(num_items)
     else:
@@ -72,7 +75,7 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
     parser = argparse.ArgumentParser()
     parser.add_argument("--category", default="Industrial_and_Scientific", choices=CATEGORIES)
-    parser.add_argument("--model", default="sasrec", choices=["pop", "item_cf", "bpr", "sasrec"])
+    parser.add_argument("--model", default="sasrec", choices=["pop", "item_cf", "bpr", "bpr_advanced", "sasrec"])
     parser.add_argument("--dashboard-port", type=int, default=8080, help="Dashboard server port")
     parser.add_argument("--no-dashboard", action="store_true", help="Disable the web dashboard")
     args = parser.parse_args()

@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data.dataset import AmazonDataset
 from src.models.bpr import BPRRecommender, BPRModel
+from src.models.bpr_advanced import BPRAdvancedRecommender, BPRAdvancedModel
 from src.models.sasrec import SASRecRecommender, SASRecModel
 from src.models.pop import PopRecommender
 from src.models.item_cf import ItemCFRecommender
@@ -41,6 +42,17 @@ def main():
     else:
         print("Warning: BPR model not found! Fitting dummy...")
         bpr_recommender.fit(train_data[:1000])
+
+    print("Loading BPR_Advanced weights...", flush=True)
+    bpr_adv_recommender = BPRAdvancedRecommender(num_items)
+    bpr_adv_recommender.model = BPRAdvancedModel(num_items, bpr_adv_recommender.embedding_dim).to(bpr_adv_recommender.device)
+    bpr_adv_path = os.path.join(RESULTS_DIR, f"{CATEGORY}_BPR_Advanced_model.pt")
+    if os.path.exists(bpr_adv_path):
+        bpr_adv_recommender.model.load_state_dict(torch.load(bpr_adv_path, map_location=bpr_adv_recommender.device))
+        print("BPR_Advanced loaded successfully.")
+    else:
+        print("Warning: BPR_Advanced model not found! Fitting dummy...")
+        bpr_adv_recommender.fit(train_data[:1000])
 
     print("Loading SASRec weights...", flush=True)
     sasrec_recommender = SASRecRecommender(num_items)
@@ -97,6 +109,7 @@ def main():
         rec_pop = pop_model.recommend(history, top_k=TOP_K)
         rec_itemcf = itemcf_model.recommend(history, top_k=TOP_K)
         rec_bpr = bpr_recommender.recommend(history, top_k=TOP_K)
+        rec_bpr_adv = bpr_adv_recommender.recommend(history, top_k=TOP_K)
         rec_sasrec = sasrec_recommender.recommend(history, top_k=TOP_K)
 
         # Decode ASINs
@@ -105,6 +118,7 @@ def main():
         rec_pop_asins = [dataset.item_vocab.decode(i) for i in rec_pop]
         rec_itemcf_asins = [dataset.item_vocab.decode(i) for i in rec_itemcf]
         rec_bpr_asins = [dataset.item_vocab.decode(i) for i in rec_bpr]
+        rec_bpr_adv_asins = [dataset.item_vocab.decode(i) for i in rec_bpr_adv]
         rec_sasrec_asins = [dataset.item_vocab.decode(i) for i in rec_sasrec]
 
         # Add to set for lookup
@@ -113,6 +127,7 @@ def main():
         asin_to_lookup.update(rec_pop_asins)
         asin_to_lookup.update(rec_itemcf_asins)
         asin_to_lookup.update(rec_bpr_asins)
+        asin_to_lookup.update(rec_bpr_adv_asins)
         asin_to_lookup.update(rec_sasrec_asins)
 
         user_cases.append({
@@ -123,6 +138,7 @@ def main():
                 "Popularity": rec_pop_asins,
                 "ItemCF": rec_itemcf_asins,
                 "BPR": rec_bpr_asins,
+                "BPR_Advanced": rec_bpr_adv_asins,
                 "SASRec": rec_sasrec_asins
             }
         })
@@ -201,6 +217,7 @@ def main():
             "Popularity": {"NDCG": 0.0081, "Hit": 0.0156, "MRR": 0.0059},
             "ItemCF": {"NDCG": 0.0050, "Hit": 0.0082, "MRR": 0.0040},
             "BPR": {"NDCG": 0.0155, "Hit": 0.0275, "MRR": 0.0117},
+            "BPR_Advanced": {"NDCG": 0.0154, "Hit": 0.0296, "MRR": 0.0111},
             "SASRec": {"NDCG": 0.0086, "Hit": 0.0165, "MRR": 0.0063},
             "LLM Zero-Shot": {"NDCG": 0.0033, "Hit": 0.0100, "MRR": 0.0014},
             "LLM Few-Shot": {"NDCG": 0.0033, "Hit": 0.0100, "MRR": 0.0014}
@@ -209,13 +226,15 @@ def main():
             "Popularity": {"NDCG": 0.0128, "Hit": 0.0243, "MRR": 0.0094},
             "ItemCF": {"NDCG": 0.0023, "Hit": 0.0044, "MRR": 0.0017},
             "BPR": {"NDCG": 0.0211, "Hit": 0.0384, "MRR": 0.0159},
-            "SASRec": {"NDCG": 0.0000, "Hit": 0.0000, "MRR": 0.0000}  # Pending
+            "BPR_Advanced": {"NDCG": 0.0220, "Hit": 0.0434, "MRR": 0.0156},
+            "SASRec": {"NDCG": 0.0095, "Hit": 0.0193, "MRR": 0.0066}
         },
         "CDs_and_Vinyl": {
             "Popularity": {"NDCG": 0.0009, "Hit": 0.0021, "MRR": 0.0006},
-            "ItemCF": {"NDCG": 0.0000, "Hit": 0.0000, "MRR": 0.0000},  # Skipped
+            "ItemCF": {"NDCG": 0.0000, "Hit": 0.0000, "MRR": 0.0000},
             "BPR": {"NDCG": 0.0281, "Hit": 0.0497, "MRR": 0.0215},
-            "SASRec": {"NDCG": 0.0000, "Hit": 0.0000, "MRR": 0.0000}  # Pending
+            "BPR_Advanced": {"NDCG": 0.0000, "Hit": 0.0000, "MRR": 0.0000},
+            "SASRec": {"NDCG": 0.0017, "Hit": 0.0036, "MRR": 0.0011}
         }
     }
 

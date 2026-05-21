@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.dataset import AmazonDataset
 from src.evaluation.evaluator import Evaluator
 from src.models.bpr import BPRRecommender
+from src.models.bpr_advanced import BPRAdvancedRecommender
 from src.models.item_cf import ItemCFRecommender
 from src.models.pop import PopRecommender
 from src.models.sasrec import SASRecRecommender
@@ -20,7 +21,7 @@ logger = get_logger("evaluate")
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--category", default="Industrial_and_Scientific", choices=CATEGORIES)
-    parser.add_argument("--model", default="sasrec", choices=["pop", "item_cf", "bpr", "sasrec"])
+    parser.add_argument("--model", default="sasrec", choices=["pop", "item_cf", "bpr", "bpr_advanced", "sasrec"])
     parser.add_argument("--split", default="test", choices=["valid", "test"])
     args = parser.parse_args()
 
@@ -39,6 +40,8 @@ def main():
         model = ItemCFRecommender(num_items)
     elif args.model == "bpr":
         model = BPRRecommender(num_items)
+    elif args.model == "bpr_advanced":
+        model = BPRAdvancedRecommender(num_items)
     elif args.model == "sasrec":
         model = SASRecRecommender(num_items)
     else:

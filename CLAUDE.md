@@ -30,11 +30,12 @@ $PYTHON="D:\environment\miniconda3\envs\recsys\python.exe"
 # 1. 运行传统模型批量流水线 (Popularity, ItemCF, BPR, SASRec)
 & $PYTHON scripts/run_all.py
 
-# 2. 训练单个传统模型 (例如 SASRec)
-& $PYTHON scripts/train.py --category Industrial_and_Scientific --model sasrec
+# 2. 训练与评估 BPR_Advanced 改进模型 (支持三品类)
+# 支持 choices: ["pop", "item_cf", "bpr", "bpr_advanced", "sasrec"]
+& $PYTHON scripts/train.py --category Industrial_and_Scientific --model bpr_advanced --no-dashboard
 
-# 3. 评估传统模型 (例如 BPR)
-& $PYTHON scripts/evaluate.py --category Industrial_and_Scientific --model bpr
+# 3. 运行样本推荐大屏数据渲染 (结合 BPR_Advanced 等五个传统模型)
+& $PYTHON scripts/generate_dashboard_data.py
 
 # 4. 评估大语言模型重排序 (LLM Ranker)
 # 需要传入 deepseek 密钥，支持 --sample-size (推荐 500 进行全量验证)
@@ -42,6 +43,7 @@ $PYTHON="D:\environment\miniconda3\envs\recsys\python.exe"
 
 # 5. 一键同步评测指标至大屏数据及 MD 实验报告
 & $PYTHON scripts/update_llm_metrics.py
+& $PYTHON scripts/update_bpr_advanced_metrics.py
 
 # 6. 将 Markdown 实验报告编译生成完美的交付级 Word 报告 (.docx)
 & $PYTHON scripts/convert_report.py

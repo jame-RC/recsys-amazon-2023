@@ -36,7 +36,7 @@ class BPRRecommender(BaseRecommender):
         self.model = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def fit(self, train_data, monitor=None):
+    def fit(self, train_data, monitor=None, **kwargs):
         self.model = BPRModel(self.num_items, self.embedding_dim).to(self.device)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 

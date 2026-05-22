@@ -15,9 +15,47 @@ def clean_markdown_links(text):
     # Replaces [text](url) with just text for a clean docx representation
     return re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
 
+def clean_markdown_math(text):
+    # Strip double dollar block math and simplify
+    text = text.replace(r'$$\mathbf{u}_{\text{dynamic}} = \sigma(\alpha) \cdot \mathbf{v}_{\text{short}} + (1 - \sigma(\alpha)) \cdot \mathbf{v}_{\text{long}}$$', 
+                        'u_dynamic = σ(α) · v_short + (1 - σ(α)) · v_long')
+    text = text.replace(r'$$\hat{y}_{ui} = \mathbf{u}_{\text{dynamic}} \cdot \mathbf{q}_i + b_i$$', 
+                        'y_ui = u_dynamic · q_i + b_i')
+    
+    # Strip inline math and replace with clean unicode
+    replacements = {
+        r'$N-2$': 'N-2',
+        r'$N-1$': 'N-1',
+        r'$N$': 'N',
+        r'$\alpha$': 'α',
+        r'$\sigma(\alpha)$': 'σ(α)',
+        r'$b_i$': 'b_i',
+        r'$\mathbf{v}_{\text{short}}$': 'v_short',
+        r'$\mathbf{v}_{\text{long}}$': 'v_long',
+        r'$\mathbf{u}_{\text{dynamic}}$': 'u_dynamic',
+        r'$\mathbf{u}_{\text{dynamic}} \cdot \mathbf{q}_i + b_i$': 'u_dynamic · q_i + b_i',
+        r'$\hat{y}_{ui} = \mathbf{u}_{\text{dynamic}} \cdot \mathbf{q}_i + b_i$': 'y_ui = u_dynamic · q_i + b_i',
+        r'$\hat{y}_{ui} = \text{user\_repr} \cdot \mathbf{q}_i + b_i$': 'y_ui = user_repr · q_i + b_i',
+        r'\sigma(\alpha)': 'σ(α)',
+        r'$$\mathbf{u}_{\text{dynamic}} = \sigma(\alpha) \cdot \mathbf{v}_{\text{short}} + (1 - \sigma(\alpha)) \cdot \mathbf{v}_{\text{long}}$$': 'u_dynamic = σ(α) · v_short + (1 - σ(α)) · v_long',
+        r'$$\hat{y}_{ui} = \mathbf{u}_{\text{dynamic}} \cdot \mathbf{q}_i + b_i$$': 'y_ui = u_dynamic · q_i + b_i',
+        r'user\_repr': 'user_repr'
+    }
+    
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+        
+    # General cleanup of remaining inline math patterns
+    text = re.sub(r'\$(\\mathbf|\\math[a-zA-Z]+)?{?([^$]+)}?\$', r'\2', text)
+    text = text.replace(r'\cdot', '·').replace(r'\sigma', 'σ').replace(r'\alpha', 'α').replace(r'\_', '_')
+    text = text.replace('$', '') # remove any remaining dollar signs
+    return text
+
 def add_formatted_text(paragraph, text):
     # Handle GfM HTML/markdown links
     text = clean_markdown_links(text)
+    # Handle math formulas
+    text = clean_markdown_math(text)
     # Split by bold '**'
     parts = text.split('**')
     for idx, part in enumerate(parts):
@@ -167,6 +205,11 @@ def build_docx(md_path, docx_path):
             idx += 1
             continue
             
+        # Skip horizontal rules
+        if line_stripped == "---":
+            idx += 1
+            continue
+            
         # Headings
         if line_stripped.startswith("# "):
             heading_text = line_stripped[2:]
@@ -201,6 +244,17 @@ def build_docx(md_path, docx_path):
             run.font.color.rgb = RGBColor(52, 73, 94) # Dark gray-blue
             h.paragraph_format.space_before = Pt(8)
             h.paragraph_format.space_after = Pt(4)
+            
+        elif line_stripped.startswith("#### "):
+            heading_text = line_stripped[5:]
+            h = doc.add_heading(level=4)
+            run = h.add_run(heading_text)
+            run.font.name = 'Microsoft YaHei'
+            run.font.size = Pt(11)
+            run.bold = True
+            run.font.color.rgb = RGBColor(100, 110, 120) # Slate gray-blue
+            h.paragraph_format.space_before = Pt(6)
+            h.paragraph_format.space_after = Pt(3)
             
         # List items
         elif line_stripped.startswith("- ") or line_stripped.startswith("* "):

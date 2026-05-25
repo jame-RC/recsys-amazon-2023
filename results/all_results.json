@@ -1,0 +1,145 @@
+{
+  "Industrial_and_Scientific_Popularity": {
+    "category": "Industrial_and_Scientific",
+    "model": "Popularity",
+    "test": {
+      "NDCG@10": 0.0081,
+      "Hit@10": 0.0156,
+      "MRR@10": 0.0059
+    },
+    "valid": {
+      "NDCG@10": 0.0093,
+      "Hit@10": 0.0171,
+      "MRR@10": 0.0071
+    }
+  },
+  "Industrial_and_Scientific_ItemCF": {
+    "category": "Industrial_and_Scientific",
+    "model": "ItemCF",
+    "test": {
+      "NDCG@10": 0.005,
+      "Hit@10": 0.0082,
+      "MRR@10": 0.004
+    },
+    "valid": {
+      "NDCG@10": 0.0068,
+      "Hit@10": 0.0112,
+      "MRR@10": 0.0055
+    }
+  },
+  "Industrial_and_Scientific_BPR": {
+    "category": "Industrial_and_Scientific",
+    "model": "BPR",
+    "test": {
+      "NDCG@10": 0.0155,
+      "Hit@10": 0.0275,
+      "MRR@10": 0.0117
+    },
+    "valid": {
+      "NDCG@10": 0.021,
+      "Hit@10": 0.0374,
+      "MRR@10": 0.0159
+    }
+  },
+  "Musical_Instruments_Popularity": {
+    "category": "Musical_Instruments",
+    "model": "Popularity",
+    "test": {
+      "NDCG@10": 0.0128,
+      "Hit@10": 0.0243,
+      "MRR@10": 0.0094
+    },
+    "valid": {
+      "NDCG@10": 0.0152,
+      "Hit@10": 0.0285,
+      "MRR@10": 0.0111
+    }
+  },
+  "Musical_Instruments_ItemCF": {
+    "category": "Musical_Instruments",
+    "model": "ItemCF",
+    "test": {
+      "NDCG@10": 0.0023,
+      "Hit@10": 0.0044,
+      "MRR@10": 0.0017
+    },
+    "valid": {
+      "NDCG@10": 0.003,
+      "Hit@10": 0.0054,
+      "MRR@10": 0.0023
+    }
+  },
+  "Musical_Instruments_BPR": {
+    "category": "Musical_Instruments",
+    "model": "BPR",
+    "test": {
+      "NDCG@10": 0.0211,
+      "Hit@10": 0.0384,
+      "MRR@10": 0.0159
+    },
+    "valid": {
+      "NDCG@10": 0.0234,
+      "Hit@10": 0.0427,
+      "MRR@10": 0.0175
+    }
+  },
+  "CDs_and_Vinyl_BPR": {
+    "category": "CDs_and_Vinyl",
+    "model": "BPR",
+    "test": {
+      "NDCG@10": 0.0281,
+      "Hit@10": 0.0497,
+      "MRR@10": 0.0215
+    },
+    "valid": {
+      "NDCG@10": 0.0321,
+      "Hit@10": 0.0576,
+      "MRR@10": 0.0244
+    }
+  },
+  "Industrial_and_Scientific_BPR_Ultra": {
+    "category": "Industrial_and_Scientific",
+    "model": "BPR_Ultra",
+    "test": {
+      "NDCG@10": 0.020932232843789166,
+      "Hit@10": 0.037540453074433655,
+      "MRR@10": 0.015899144005940172,
+      "eval_time_sec": 18.84
+    },
+    "valid": {
+      "NDCG@10": 0.0268,
+      "Hit@10": 0.048,
+      "MRR@10": 0.0202
+    }
+  },
+  "Musical_Instruments_BPR_Ultra": {
+    "category": "Musical_Instruments",
+    "model": "BPR_Ultra",
+    "test": {
+      "NDCG@10": 0.030358276693240253,
+      "Hit@10": 0.056094291335155554,
+      "MRR@10": 0.022558154862425434,
+      "eval_time_sec": 22.05
+    },
+    "valid": {
+      "NDCG@10": 0.0338,
+      "Hit@10": 0.061,
+      "MRR@10": 0.025
+    }
+  },
+  "CDs_and_Vinyl_BPR_Ultra": {
+    "category": "CDs_and_Vinyl",
+    "model": "BPR_Ultra",
+    "test": {
+      "NDCG@10": 0.035811176031809305,
+      "Hit@10": 0.06261099809486906,
+      "MRR@10": 0.02766269213401839,
+      "eval_time_sec": 56.01
+    },
+    "valid": {
+      "NDCG@10": 0.0413,
+      "Hit@10": 0.072,
+      "MRR@10": 0.032
+    }
+  }
+}

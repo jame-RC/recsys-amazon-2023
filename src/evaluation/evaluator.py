@@ -25,10 +25,15 @@ class Evaluator:
         start_time = time.time()
         if has_batch:
             # Process in batches for memory efficiency
+            supports_user_ids = getattr(self.model, "supports_user_ids", False)
             for i in range(0, len(self.test_data), batch_size):
                 batch = self.test_data[i:i + batch_size]
                 histories = [h for _, h, _ in batch]
-                batch_preds = self.model.recommend_batch(histories, self.top_k)
+                if supports_user_ids:
+                    user_ids = [uid for uid, _, _ in batch]
+                    batch_preds = self.model.recommend_batch(histories, self.top_k, user_ids=user_ids)
+                else:
+                    batch_preds = self.model.recommend_batch(histories, self.top_k)
                 predictions.extend(batch_preds)
                 targets.extend([t for _, _, t in batch])
         else:

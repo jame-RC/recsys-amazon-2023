@@ -1,0 +1,18 @@
+{
+  "category": "Musical_Instruments",
+  "model": "BPR_Ultra_Final",
+  "config": {
+    "dim": 128,
+    "lr": 0.002,
+    "K": 5,
+    "dropout": 0.05,
+    "wd": 1e-06
+  },
+  "val_ndcg": 0.03377155039804423,
+  "test": {
+    "NDCG@10": 0.030358276693240253,
+    "Hit@10": 0.056094291335155554,
+    "MRR@10": 0.022558154862425434,
+    "eval_time_sec": 22.05
+  }
+}

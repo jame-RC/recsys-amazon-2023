@@ -1,0 +1,16 @@
+{
+  "category": "Industrial_and_Scientific",
+  "model": "LLM_Ranker_ZeroShot",
+  "valid": {
+    "NDCG@10": 0.01539925984462514,
+    "Hit@10": 0.026,
+    "MRR@10": 0.01224126984126984,
+    "eval_time_sec": 556.3690419197083
+  },
+  "test": {
+    "NDCG@10": 0.01539925984462514,
+    "Hit@10": 0.026,
+    "MRR@10": 0.01224126984126984,
+    "eval_time_sec": 556.3690419197083
+  }
+}

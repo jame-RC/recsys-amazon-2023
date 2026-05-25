@@ -1,0 +1,110 @@
+{
+  "category": "Industrial_and_Scientific",
+  "model": "BPR_GridSearch",
+  "best_config": {
+    "dim": 128,
+    "lr": 0.002,
+    "K": 5,
+    "dropout": 0.05,
+    "wd": 1e-06
+  },
+  "screening_results": [
+    {
+      "tag": "dim128_lr0.002_K5_drop0.05",
+      "config": {
+        "dim": 128,
+        "lr": 0.002,
+        "K": 5,
+        "dropout": 0.05,
+        "wd": 1e-06
+      },
+      "best_val": 0.02534121205042122,
+      "best_ep": 24,
+      "time": 485.2
+    },
+    {
+      "tag": "dim64_lr0.002_K5_drop0.05",
+      "config": {
+        "dim": 64,
+        "lr": 0.002,
+        "K": 5,
+        "dropout": 0.05,
+        "wd": 1e-06
+      },
+      "best_val": 0.02310335101728845,
+      "best_ep": 24,
+      "time": 479.4
+    },
+    {
+      "tag": "dim64_lr0.002_K5_drop0.0",
+      "config": {
+        "dim": 64,
+        "lr": 0.002,
+        "K": 5,
+        "dropout": 0.0,
+        "wd": 1e-06
+      },
+      "best_val": 0.022955432160140978,
+      "best_ep": 24,
+      "time": 479.4
+    },
+    {
+      "tag": "dim64_lr0.002_K5_drop0.1",
+      "config": {
+        "dim": 64,
+        "lr": 0.002,
+        "K": 5,
+        "dropout": 0.1,
+        "wd": 1e-06
+      },
+      "best_val": 0.022468214039292396,
+      "best_ep": 24,
+      "time": 479.3
+    },
+    {
+      "tag": "dim64_lr0.002_K10_drop0.05",
+      "config": {
+        "dim": 64,
+        "lr": 0.002,
+        "K": 10,
+        "dropout": 0.05,
+        "wd": 1e-06
+      },
+      "best_val": 0.02235718558819163,
+      "best_ep": 24,
+      "time": 479.9
+    },
+    {
+      "tag": "dim64_lr0.001_K5_drop0.0",
+      "config": {
+        "dim": 64,
+        "lr": 0.001,
+        "K": 5,
+        "dropout": 0.0,
+        "wd": 1e-06
+      },
+      "best_val": 0.019456412999492394,
+      "best_ep": 24,
+      "time": 479.0
+    },
+    {
+      "tag": "dim64_lr0.0005_K5_drop0.0",
+      "config": {
+        "dim": 64,
+        "lr": 0.0005,
+        "K": 5,
+        "dropout": 0.0,
+        "wd": 1e-06
+      },
+      "best_val": 0.01835789379685297,
+      "best_ep": 6,
+      "time": 480.2
+    }
+  ],
+  "test": {
+    "NDCG@10": 0.020932232843789166,
+    "Hit@10": 0.037540453074433655,
+    "MRR@10": 0.015899144005940172,
+    "eval_time_sec": 18.84
+  }
+}

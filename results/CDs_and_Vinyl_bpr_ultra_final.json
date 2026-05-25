@@ -1,0 +1,18 @@
+{
+  "category": "CDs_and_Vinyl",
+  "model": "BPR_Ultra_Final",
+  "config": {
+    "dim": 128,
+    "lr": 0.002,
+    "K": 5,
+    "dropout": 0.05,
+    "wd": 1e-06
+  },
+  "val_ndcg": 0.041322035959831305,
+  "test": {
+    "NDCG@10": 0.035811176031809305,
+    "Hit@10": 0.06261099809486906,
+    "MRR@10": 0.02766269213401839,
+    "eval_time_sec": 56.01
+  }
+}

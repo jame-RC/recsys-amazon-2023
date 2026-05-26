@@ -51,7 +51,7 @@ def train_and_evaluate(category: str, model_name: str, monitor: TrainingMonitor 
     model = get_model(model_name, num_items)
 
     logger.info(f"Training {model.name}...")
-    model.fit(train_data, monitor=monitor, category=category)
+    model.fit(train_data, monitor=monitor, category=category, valid_data=valid_data)
 
     logger.info("Evaluating on validation set...")
     valid_evaluator = Evaluator(model, valid_data, num_items, TOP_K)

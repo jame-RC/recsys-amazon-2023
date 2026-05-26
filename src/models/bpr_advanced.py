@@ -35,21 +35,25 @@ class BPRAdvancedModel(nn.Module):
 
 class BPRAdvancedRecommender(BaseRecommender):
     def __init__(self, num_items: int, embedding_dim: int = EMBEDDING_DIM, lr: float = 1e-3,
-                 num_epochs: int = 25, patience: int = PATIENCE):
+                 num_epochs: int = 50, patience: int = 5, weight_decay: float = 1e-6,
+                 neg_samples: int = 5):
         super().__init__(num_items)
         self.name = "BPR_Advanced"
         self.embedding_dim = embedding_dim
         self.lr = lr
         self.num_epochs = num_epochs
         self.patience = patience
+        self.weight_decay = weight_decay
+        self.neg_samples = neg_samples
         self.model = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def fit(self, train_data, monitor=None, **kwargs):
         import os
         category = kwargs.get("category", "default")
+        valid_data = kwargs.get("valid_data", None)
         self.model = BPRAdvancedModel(self.num_items, self.embedding_dim).to(self.device)
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=1e-5)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
         # Build tensor dataset on GPU for ultimate speed
         # Each entry in train_data: (user_idx, history, target)
@@ -81,18 +85,12 @@ class BPRAdvancedRecommender(BaseRecommender):
         targets_t = torch.tensor(targets, dtype=torch.long, device=self.device)
         history_lens_t = torch.tensor(history_lens, dtype=torch.long, device=self.device)
         
-        best_loss = float("inf")
+        best_val = -float("inf")
+        best_state = None
         patience_counter = 0
-        
-        # Build unique positive item sets per user for negative sample verification
-        user_pos_sets = {}
-        for user_idx, history, target in train_data:
-            if user_idx not in user_pos_sets:
-                user_pos_sets[user_idx] = set()
-            user_pos_sets[user_idx].update(history)
-            user_pos_sets[user_idx].add(target)
+        K = self.neg_samples
 
-        logger.info(f"Start training BPR_Advanced with {num_samples} samples...")
+        logger.info(f"Start training BPR_Advanced with {num_samples} samples, neg_samples={K}...")
         
         for epoch in range(self.num_epochs):
             self.model.train()
@@ -128,20 +126,26 @@ class BPRAdvancedRecommender(BaseRecommender):
                 alpha = torch.sigmoid(self.model.alpha) # clamp alpha in [0, 1]
                 user_repr = alpha * short_term_emb + (1 - alpha) * long_term_emb # [B, D]
                 
-                # Sample negative items
-                neg_batch = torch.randint(1, self.num_items, (batch_size_actual,), device=self.device)
-                
-                # Vectorized verification to avoid sampling a positive item
-                mask_conflict = (neg_batch == b_target)
+                # Sample K negative items per positive: [B, K]
+                neg_batch = torch.randint(1, self.num_items, (batch_size_actual, K), device=self.device)
+                # Cheap rejection against the positive
+                mask_conflict = (neg_batch == b_target.unsqueeze(1))
                 if mask_conflict.any():
-                    n_replace = mask_conflict.sum().item()
+                    n_replace = int(mask_conflict.sum().item())
                     neg_batch[mask_conflict] = torch.randint(1, self.num_items, (n_replace,), device=self.device)
-                
-                # Forward Pass
-                pos_score, neg_score = self.model(user_repr, b_target, neg_batch)
-                
-                # Pairwise BPR Loss
-                loss = -torch.log(torch.sigmoid(pos_score - neg_score) + 1e-10).mean()
+
+                # Pos score: [B]
+                pos_emb = self.model.item_emb(b_target)
+                pos_bias = self.model.item_bias(b_target).squeeze(-1)
+                pos_score = (user_repr * pos_emb).sum(dim=-1) + pos_bias
+
+                # Neg scores: [B, K] — broadcast user_repr against K negatives
+                neg_emb = self.model.item_emb(neg_batch)              # [B, K, D]
+                neg_bias = self.model.item_bias(neg_batch).squeeze(-1)  # [B, K]
+                neg_score = (user_repr.unsqueeze(1) * neg_emb).sum(dim=-1) + neg_bias  # [B, K]
+
+                # Pairwise BPR loss averaged over K negatives, then over batch
+                loss = -torch.log(torch.sigmoid(pos_score.unsqueeze(1) - neg_score) + 1e-10).mean()
                 
                 optimizer.zero_grad()
                 loss.backward()
@@ -150,22 +154,41 @@ class BPRAdvancedRecommender(BaseRecommender):
                 total_loss += loss.item() * batch_size_actual
                 
             avg_loss = total_loss / num_samples
-            logger.info(f"Epoch {epoch}: loss={avg_loss:.4f}")
+
+            # Validation-based early stopping
+            val_ndcg = None
+            if valid_data is not None:
+                from src.evaluation.evaluator import Evaluator
+                from src.utils.config import TOP_K
+                self.model.eval()
+                val_metrics = Evaluator(self, valid_data, self.num_items, TOP_K).evaluate()
+                val_ndcg = val_metrics[f"NDCG@{TOP_K}"]
+
             if monitor is not None:
-                monitor.log(epoch=epoch, loss=avg_loss)
-                
-            if avg_loss < best_loss:
-                best_loss = avg_loss
-                patience_counter = 0
-                if category != "default":
-                    os.makedirs("results", exist_ok=True)
-                    checkpoint_path = os.path.join("results", f"{category}_BPR_Advanced_model.pt")
-                    torch.save(self.model.state_dict(), checkpoint_path)
+                if val_ndcg is not None:
+                    monitor.log(epoch=epoch, loss=avg_loss, val_ndcg=val_ndcg)
+                else:
+                    monitor.log(epoch=epoch, loss=avg_loss)
+            if val_ndcg is not None:
+                logger.info(f"Epoch {epoch}: loss={avg_loss:.4f} val_NDCG@10={val_ndcg:.4f}")
             else:
-                patience_counter += 1
+                logger.info(f"Epoch {epoch}: loss={avg_loss:.4f}")
+
+            if val_ndcg is not None:
+                if val_ndcg > best_val:
+                    best_val = val_ndcg
+                    best_state = {k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()}
+                    patience_counter = 0
+                else:
+                    patience_counter += 1
                 if patience_counter >= self.patience:
-                    logger.info(f"Early stopping at epoch {epoch}")
+                    logger.info(f"Early stopping at epoch {epoch}, best val NDCG@10={best_val:.4f}")
                     break
+
+        # Restore best validation checkpoint
+        if best_state is not None:
+            self.model.load_state_dict(best_state)
+            logger.info(f"Restored best checkpoint with val NDCG@10={best_val:.4f}")
 
     def recommend(self, history: List[int], top_k: int = 10) -> List[int]:
         if not history:

@@ -82,10 +82,10 @@ class SASRecModel(nn.Module):
 class SASRecRecommender(BaseRecommender):
     def __init__(self, num_items: int, embedding_dim: int = EMBEDDING_DIM,
                  max_seq_len: int = MAX_SEQ_LEN, num_heads: int = NUM_HEADS,
-                 num_layers: int = NUM_LAYERS, dropout: float = DROPOUT,
-                 lr: float = 1e-4, num_epochs: int = NUM_EPOCHS,
+                 num_layers: int = NUM_LAYERS, dropout: float = 0.5,
+                 lr: float = 1e-3, num_epochs: int = NUM_EPOCHS,
                  batch_size: int = 2048, neg_samples: int = NEG_SAMPLES,
-                 patience: int = PATIENCE):
+                 patience: int = 5, weight_decay: float = 1e-6):
         super().__init__(num_items)
         self.name = "SASRec"
         self.embedding_dim = embedding_dim
@@ -98,11 +98,13 @@ class SASRecRecommender(BaseRecommender):
         self.batch_size = batch_size
         self.neg_samples = neg_samples
         self.patience = patience
+        self.weight_decay = weight_decay
         self.model = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def fit(self, train_data, monitor=None, **kwargs):
         category = kwargs.get("category", "default")
+        valid_data = kwargs.get("valid_data", None)
         checkpoint_dir = "results"
         os.makedirs(checkpoint_dir, exist_ok=True)
         checkpoint_path = os.path.join(checkpoint_dir, f"{category}_SASRec_checkpoint.pt")
@@ -112,31 +114,20 @@ class SASRecRecommender(BaseRecommender):
             self.num_heads, self.num_layers, self.dropout
         ).to(self.device)
 
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         
         # We pass neg_samples=1 to dataset to minimize CPU-side sampling overhead
         dataset = SeqRecDataset(train_data, self.max_seq_len, self.num_items, neg_samples=1)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True,
                                 num_workers=0, pin_memory=True)
 
-        best_loss = float("inf")
+        best_val = -float("inf")
+        best_state = None
         patience_counter = 0
         start_epoch = 0
         total_batches = (len(dataset) + self.batch_size - 1) // self.batch_size
 
-        # Try to resume from checkpoint
-        if os.path.exists(checkpoint_path):
-            try:
-                logger.info(f"Loading checkpoint from {checkpoint_path}...")
-                checkpoint = torch.load(checkpoint_path, map_location=self.device)
-                self.model.load_state_dict(checkpoint['model_state_dict'])
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                start_epoch = checkpoint['epoch'] + 1
-                best_loss = checkpoint['best_loss']
-                patience_counter = checkpoint['patience_counter']
-                logger.info(f"Successfully resumed training from epoch {start_epoch}")
-            except Exception as e:
-                logger.warning(f"Failed to load checkpoint: {e}. Starting training from scratch.")
+        # Skip checkpoint resume — val-based early stopping must run from a clean state to track best epoch.
 
         for epoch in range(start_epoch, self.num_epochs):
             self.model.train()
@@ -144,27 +135,41 @@ class SASRecRecommender(BaseRecommender):
             num_batches = 0
 
             for batch in dataloader:
-                input_seq = batch["input_seq"].to(self.device)
-                target = batch["target"].to(self.device)
-                seq_lens = batch["seq_len"]
+                input_seq = batch["input_seq"].to(self.device)            # [B, L]
+                target = batch["target"].to(self.device)                  # [B]
+                seq_lens = batch["seq_len"].to(self.device)               # [B]
 
-                # Vectorized negative sampling on GPU - completely eliminates CPU bottleneck
-                batch_size_actual = input_seq.size(0)
-                negatives = torch.randint(1, self.num_items, (batch_size_actual, self.neg_samples), device=self.device)
+                B, L = input_seq.shape
 
-                # BPR loss: score positive items higher than negatives
-                hidden = self.model.encode(input_seq)            # [B, L, D]
-                # Use last NON-PADDING position (Padding is on the right)
-                last_hidden = hidden[torch.arange(hidden.size(0), device=self.device), seq_lens - 1, :]  # [B, D]
+                # --- Full-sequence next-item labels (right-padding) ---
+                # labels[b, i] = next item after position i:
+                #   - input_seq[b, i+1] for i < seq_lens[b] - 1
+                #   - target[b]         for i == seq_lens[b] - 1
+                #   - 0 (ignored)       for i >= seq_lens[b]
+                labels = torch.zeros_like(input_seq)
+                labels[:, :-1] = input_seq[:, 1:]  # shift-left
+                batch_idx = torch.arange(B, device=self.device)
+                labels[batch_idx, seq_lens - 1] = target
+                loss_mask = (labels != 0)  # [B, L] valid prediction positions
 
-                pos_scores = self.model.compute_scores(
-                    last_hidden.unsqueeze(1), target.unsqueeze(1)
-                ).squeeze(1)
-                neg_scores = self.model.compute_scores(
-                    last_hidden.unsqueeze(1), negatives
-                ).mean(dim=1)
+                # One negative per (b, i); cheap rejection against same-position positive.
+                negatives = torch.randint(1, self.num_items, (B, L), device=self.device)
+                conflict = (negatives == labels) & loss_mask
+                if conflict.any():
+                    n_replace = int(conflict.sum().item())
+                    negatives[conflict] = torch.randint(1, self.num_items, (n_replace,), device=self.device)
 
-                loss = -torch.log(torch.sigmoid(pos_scores - neg_scores) + 1e-10).mean()
+                hidden = self.model.encode(input_seq)  # [B, L, D]
+
+                out_w = self.model.out_linear.weight   # [num_items, D]
+                pos_emb = out_w[labels]                # [B, L, D]
+                neg_emb = out_w[negatives]             # [B, L, D]
+                pos_scores = (hidden * pos_emb).sum(dim=-1)  # [B, L]
+                neg_scores = (hidden * neg_emb).sum(dim=-1)  # [B, L]
+
+                loss_per_pos = -torch.log(torch.sigmoid(pos_scores - neg_scores) + 1e-10)  # [B, L]
+                mask_f = loss_mask.float()
+                loss = (loss_per_pos * mask_f).sum() / mask_f.sum().clamp(min=1)
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -178,37 +183,41 @@ class SASRecRecommender(BaseRecommender):
                     logger.info(f"  Epoch {epoch} batch {num_batches}/{total_batches} loss={loss.item():.4f}")
 
             avg_loss = total_loss / max(num_batches, 1)
+
+            # Validation-based early stopping
+            val_ndcg = None
+            if valid_data is not None:
+                from src.evaluation.evaluator import Evaluator
+                from src.utils.config import TOP_K
+                self.model.eval()
+                val_metrics = Evaluator(self, valid_data, self.num_items, TOP_K).evaluate()
+                val_ndcg = val_metrics[f"NDCG@{TOP_K}"]
+
             if monitor:
-                monitor.log(epoch=epoch, loss=avg_loss)
-            logger.info(f"Epoch {epoch}: loss={avg_loss:.4f}")
-
-            if avg_loss < best_loss:
-                best_loss = avg_loss
-                patience_counter = 0
+                if val_ndcg is not None:
+                    monitor.log(epoch=epoch, loss=avg_loss, val_ndcg=val_ndcg)
+                else:
+                    monitor.log(epoch=epoch, loss=avg_loss)
+            if val_ndcg is not None:
+                logger.info(f"Epoch {epoch}: loss={avg_loss:.4f} val_NDCG@10={val_ndcg:.4f}")
             else:
-                patience_counter += 1
-                
-            # Save checkpoint at the end of each epoch
-            checkpoint = {
-                'epoch': epoch,
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'best_loss': best_loss,
-                'patience_counter': patience_counter
-            }
-            torch.save(checkpoint, checkpoint_path)
+                logger.info(f"Epoch {epoch}: loss={avg_loss:.4f}")
 
-            if patience_counter >= self.patience:
-                logger.info(f"Early stopping at epoch {epoch}")
-                break
+            if val_ndcg is not None:
+                if val_ndcg > best_val:
+                    best_val = val_ndcg
+                    best_state = {k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()}
+                    patience_counter = 0
+                else:
+                    patience_counter += 1
+                if patience_counter >= self.patience:
+                    logger.info(f"Early stopping at epoch {epoch}, best val NDCG@10={best_val:.4f}")
+                    break
 
-        # Remove temporary checkpoint on successful completion
-        if os.path.exists(checkpoint_path):
-            try:
-                os.remove(checkpoint_path)
-                logger.info("Training completed. Temporary checkpoint removed.")
-            except Exception as e:
-                logger.warning(f"Failed to remove checkpoint file: {e}")
+        # Restore best validation checkpoint
+        if best_state is not None:
+            self.model.load_state_dict(best_state)
+            logger.info(f"Restored best checkpoint with val NDCG@10={best_val:.4f}")
 
     def recommend(self, history: List[int], top_k: int = 10) -> List[int]:
         if not history:

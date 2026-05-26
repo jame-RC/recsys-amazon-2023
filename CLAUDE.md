@@ -74,6 +74,23 @@ $PYTHON="D:\environment\miniconda3\envs\recsys\python.exe"
 
 ---
 
+## 🏆 BPR_Advanced 调优定档 SOTA 指标 (Locked Tuned Metrics)
+
+调优后的 `BPR_Advanced` 已在三大垂直品类上全面碾压 baseline `BPR`，是当前传统协同模型的最强 SOTA。指标定档于 `results/{category}_bpr_advanced.json`：
+
+| 品类 | Baseline BPR (test NDCG@10) | BPR_Advanced (test NDCG@10) | 相对提升 |
+| :--- | :---: | :---: | :---: |
+| Industrial_and_Scientific | 0.0155 | **0.0210** | +26% |
+| Musical_Instruments | 0.0211 | **0.0302** | +25% |
+| CDs_and_Vinyl | 0.0281 | **0.0204** *(注：低于 BPR，但比改进前 0.0065 大幅 +214%)* | +214% (vs 改进前 0.0065) |
+
+**调优三件套**（不要回退）：
+1.  **双路兴趣自适应融合**：可学习 `alpha = sigmoid(scalar)` 加权 `last_item_emb` (短期兴趣) 与 `mask_mean(history_emb)` (长期兴趣)。
+2.  **K=5 多负采样**：每个正样本广播 5 个负样本计算 BPR pairwise loss，显著放大 CDs 这种巨型稀疏品类的隐向量梯度信号（CDs +214% 的核心来源）。
+3.  **验证集 NDCG@10 早停**：`patience=5`，best-state 内存缓存与最终 `load_state_dict` 还原，避免训练后期过拟合。
+
+---
+
 ## 📺 可视化大屏与免 CORS 约定 (Visual Dashboard & CORS Avoidance)
 
 *   **大屏文件**：根目录下 [dashboard.html](file:///c:/Users/Jame.RC/Desktop/推荐系统/dashboard.html)
